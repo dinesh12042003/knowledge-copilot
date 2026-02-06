@@ -16,7 +16,7 @@ A personal AI assistant that remembers your conversations, helps answer question
 **Installation & Running:**  
 1. Clone the repo:  
    ```bash
-   git clone https://github.com/<your-username>/knowledge-copilot.git
+   git clone https://github.com/dinesh12042003/knowledge-copilot.git
    
 2. Navigate to project:
    ```bash
