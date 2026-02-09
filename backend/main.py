@@ -8,11 +8,16 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from groq import Groq
+from pathlib import Path
 
 # -----------------------------
 # Load environment variables
 # -----------------------------
-load_dotenv()
+
+
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(override=True)
+
 
 # -----------------------------
 # Database Imports
