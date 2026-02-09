@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from groq import Groq
 
+# -----------------------------
 # Load environment variables
+# -----------------------------
 load_dotenv()
 
 # -----------------------------
@@ -18,6 +20,11 @@ load_dotenv()
 from backend.database import engine, Base, SessionLocal
 from backend import models, crud
 from backend.config import settings  # GROQ API key & model settings
+
+# -----------------------------
+# RAG Imports
+# -----------------------------
+from backend.rag.retriever import retrieve_context
 
 # -----------------------------
 # FastAPI App
@@ -56,7 +63,7 @@ class ChatRequest(BaseModel):
     message: str
 
 # -----------------------------
-# Root Endpoint
+# Root Endpoint (Health Check)
 # -----------------------------
 @app.get("/")
 def root():
@@ -91,63 +98,81 @@ def test_db(db: Session = Depends(get_db)):
         ]
     }
 
-# -----------------------------
+# =============================
 # Chat Endpoint
-# -----------------------------
+# =============================
 @app.post("/chat")
 def chat(req: ChatRequest, db: Session = Depends(get_db)):
     """
     Chat endpoint with:
-    - Last N message context
-    - System prompt
-    - Timestamped AI response
+    - SQL memory (user messages)
+    - RAG knowledge retrieval (global + user docs)
+    - System behavior prompt
+    - Timestamped assistant response
     """
 
-    # 1️⃣ Get or create user
-    user = crud.get_or_create_user(db, req.google_id, req.email, req.name)
+    # 1️⃣ Get or create user in DB
+    user = crud.get_or_create_user(
+        db, req.google_id, req.email, req.name
+    )
 
-    # 2️⃣ Save user message
+    # 2️⃣ Save incoming user message
     crud.save_message(db, user.id, "user", req.message)
 
-    # 3️⃣ Fetch full chat history
+    # 3️⃣ Fetch user chat history from DB
     history = crud.get_chat_history(db, user.id)
 
-    # 4️⃣ Limit messages to last N for context
-    N = 10  # You can adjust this number
+    # 4️⃣ Limit to last N messages for context window
+    N = 10
     last_messages = history[-N:]
-
-    # Convert DB messages to LLM format
     messages = [{"role": m.role, "content": m.content} for m in last_messages]
 
-    # 5️⃣ Optional system prompt (tells AI how to behave)
+    # 5️⃣ Retrieve RAG context: global + user-specific docs
+    context, sources = retrieve_context(
+        user_query=req.message,
+        user_id=req.google_id
+    )
+
+    # 6️⃣ System prompt with retrieved context
+    #    LLM sees both system instructions and context
     system_prompt = {
         "role": "system",
-        "content": "You are a helpful assistant that remembers previous messages and answers concisely."
+        "content": f"""
+You are a helpful personal knowledge assistant.
+
+Use the provided CONTEXT if relevant.
+If context doesn't contain answer, respond normally.
+
+CONTEXT:
+{context}
+"""
     }
 
-    # Add system prompt at the start
+    # 7️⃣ Combine system prompt with last user messages
     messages = [system_prompt] + messages
 
-    # 6️⃣ Call LLM
+    # 8️⃣ Call LLM via GROQ API
     response = client.chat.completions.create(
         model=MODEL,
         messages=messages
     )
 
+    # Extract assistant reply
     reply = response.choices[0].message.content
 
-    # 7️⃣ Save assistant reply
+    # 9️⃣ Save assistant reply to DB
     crud.save_message(db, user.id, "assistant", reply)
 
-    # 8️⃣ Return response with timestamp
+    # 🔟 Return reply + sources + timestamp
     return {
         "response": reply,
-        "timestamp": str(history[-1].timestamp)  # latest user message timestamp
+        "sources": sources,
+        "timestamp": str(history[-1].timestamp)
     }
 
-# -----------------------------
+# =============================
 # Fetch User Chat History
-# -----------------------------
+# =============================
 @app.get("/history/{google_id}")
 def get_history(google_id: str, db: Session = Depends(get_db)):
     """
