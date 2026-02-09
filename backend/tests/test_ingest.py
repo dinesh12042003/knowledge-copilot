@@ -1,11 +1,12 @@
-from backend.rag.ingest_global import get_global_vectorstore
+# from backend.rag.ingest_global import get_global_vectorstore
 
-db = get_global_vectorstore()
-docs = db.similarity_search("text from your PDF here", k=3)
-for d in docs:
-    print(d.page_content)
+# db = get_global_vectorstore()
+# docs = db.similarity_search("text from your PDF here", k=3)
+# for d in docs:
+#     print(d.page_content)
 
-
+from backend.config import settings
+print(settings.GROQ_API_KEY)
 
 
 
