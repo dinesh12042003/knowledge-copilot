@@ -129,7 +129,7 @@ if prompt:
         with st.spinner("Thinking..."):
             try:
                 response = requests.post(
-                    BACKEND_URL,
+                    f"{BACKEND_URL}/chat",
                     json={
                         "google_id": user["id"],
                         "email": user["email"],
