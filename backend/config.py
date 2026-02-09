@@ -12,7 +12,7 @@ class Settings:
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
     # Default model (fast + free)
-    MODEL = "llama-3.1-8b-instant"
+    MODEL: str = os.getenv("MODEL", "llama-3.1-8b-instant")
 
     # Default DB - sql lite
     DATABASE_URL = "sqlite:///./chat.db"
