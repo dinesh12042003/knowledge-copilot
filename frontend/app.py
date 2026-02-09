@@ -10,7 +10,7 @@ from auth.google_auth import login, logout
 # -----------------------------
 # Backend Endpoint
 # -----------------------------
-BACKEND_URL = "https://knowledge-copilot-mo21.onrender.com/"
+BACKEND_URL = "https://knowledge-copilot-mo21.onrender.com"
 
 # -----------------------------
 # Page Configuration
